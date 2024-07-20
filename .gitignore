@@ -1,0 +1,19 @@
+# Python Bytecode
+*.pyc
+__pycache__/
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Virtual Environment
+venv/
+
+# Test Directory
+test/
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Streamlit Logs
+*.log
