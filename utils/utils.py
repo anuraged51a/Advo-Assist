@@ -284,7 +284,7 @@ def generate_result(client_df, journal_df):
                     result_list.append(
                         {
                             "client_class" : client_row["class"],
-                            "client_trademark" : client_row["trademark"],
+                            "client_trademark" : client_row["trade_mark"],
                             "journal_class" : journal_row["journal_class"],
                             "journal_trademark" : journal_row["brand_header"],
                             "journal_page" : journal_row["journal_page"],
