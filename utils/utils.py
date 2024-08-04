@@ -185,6 +185,16 @@ def extract_gs_info(page_dict):
     return gs_info
 
 
+def extract_image_from_pdf(doc, page_n):
+    page = doc.load_page(page_n)
+    images = page.get_images(full = True)
+    xref = images[0][0]
+    base_image = doc.extract_image(xref)
+    image_bytes = base_image["image"]
+    image_ext = base_image["ext"] 
+    return f"_image_{page_n + 1}.{image_ext}", image_bytes    
+
+
 def read_pdf(file):
     doc = fitz.open(stream = file.read(), filetype = "pdf")
     total_pages = doc.page_count
@@ -197,7 +207,7 @@ def read_pdf(file):
             break
     init_page = page_n
     # Data Extraction from PDF
-    result_list = []
+    result_list, image_data_list = [], []
     for page_n in range(init_page, total_pages):   
         result_dict = {
             "journal_page" : page_n + 1
@@ -213,6 +223,9 @@ def read_pdf(file):
             result_dict["journal_class"] = journal_info.get("journal_class")
             # Brand Header Extraction
             result_dict["brand_header"] = extract_brand_header(page_dict)
+            if result_dict["brand_header"] is None:
+                image_name, image_data = extract_image_from_pdf(doc, page_n)
+                image_data_list.append((image_name, image_data))
             # Application Number Extraction
             result_dict["application_number"] = extract_application_number(page_dict)
             # Application Date Extraction
@@ -243,8 +256,7 @@ def read_pdf(file):
             )
     # Convert List of Dictionaries to DataFrame
     result_df = pd.DataFrame(result_list)
-    return result_df
-
+    return result_df, image_data_list
 
 
 def generate_result(client_df, journal_df):
