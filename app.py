@@ -90,8 +90,9 @@ else:
                 logging.info(f"Client DF Shape: {client_df.shape}")
                 logging.info(f"Client DF Columns: {list(client_df.columns)}")
                 # Load the PDF File and Run the Algorithm   
-                journal_df = read_pdf(jf)
+                journal_df, image_data_list = read_pdf(jf)
                 logging.info(f"Journal DF Shape: {client_df.shape}")
+                logging.info(f"Image Data List: {len(image_data_list)}")
                 empty_df, result_df = generate_result(client_df, journal_df)
                 logging.info(f"Empty DF Shape: {empty_df.shape}")
                 logging.info(f"Result DF Shape: {result_df.shape}")
@@ -101,15 +102,17 @@ else:
                     with pd.ExcelWriter(output, engine='openpyxl') as writer:
                         df.to_excel(writer, index=False)
                     return output.getvalue()
-                def create_zip(file_one, file_two):
+                def create_zip(file_one, file_two, image_data_list):
                     buffer = io.BytesIO()
                     with zipfile.ZipFile(buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
                         zip_file.writestr("empty_file.xlsx", file_one)
                         zip_file.writestr("result_file.xlsx", file_two)
+                        for image_name, image_data in image_data_list:
+                            zip_file.writestr(image_name, image_data)
                     return buffer.getvalue()
                 empty_excel = to_excel(empty_df)
                 result_excel = to_excel(result_df)
-                zip_data = create_zip(empty_excel, result_excel)
+                zip_data = create_zip(empty_excel, result_excel, image_data_list)
                 st.download_button(
                     label = "Download",
                     data = zip_data,
