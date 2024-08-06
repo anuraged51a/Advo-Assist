@@ -192,7 +192,7 @@ def extract_image_from_pdf(doc, page_n):
     base_image = doc.extract_image(xref)
     image_bytes = base_image["image"]
     image_ext = base_image["ext"] 
-    return f"_image_{page_n + 1}.{image_ext}", image_bytes    
+    return f"Page: {page_n + 1}", image_bytes    
 
 
 def read_pdf(file):

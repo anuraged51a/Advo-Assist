@@ -3,7 +3,12 @@ import logging
 import zipfile
 import pandas as pd
 import base64
+import os
 import io
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+from PIL import Image
 from utils.utils import (
     read_pdf,
     generate_result
@@ -99,20 +104,69 @@ else:
                 # Link Creation for Downloading the Excel Files
                 def to_excel(df):
                     output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        df.to_excel(writer, index=False)
+                    with pd.ExcelWriter(output, engine = 'openpyxl') as writer:
+                        df.to_excel(writer, index = False)
                     return output.getvalue()
-                def create_zip(file_one, file_two, image_data_list):
+                def create_pdf_with_images(image_data_list, output_path):
+                    c = canvas.Canvas(output_path, pagesize = letter)
+                    page_width, page_height = letter
+                    images_per_page = 4
+                    images_in_current_page = 0
+                    margin = 50
+                    spacing = 20
+                    available_width = (page_width - 2 * margin - spacing) / 2  
+                    available_height = (page_height - 2 * margin - spacing) / 2
+                    for i, (filename, image_bytes) in enumerate(image_data_list):
+                        image = Image.open(io.BytesIO(image_bytes))
+                        img_width, img_height = image.size
+                        aspect_ratio = img_width / img_height                        
+                        if img_width > img_height:
+                            new_width = min(available_width, img_width)
+                            new_height = new_width / aspect_ratio
+                            if new_height > available_height:
+                                new_height = available_height
+                                new_width = new_height * aspect_ratio
+                        else:
+                            new_height = min(available_height, img_height)
+                            new_width = new_height * aspect_ratio
+                            if new_width > available_width:
+                                new_width = available_width
+                                new_height = new_width / aspect_ratio
+                        col = images_in_current_page % 2
+                        row = images_in_current_page // 2
+                        x = margin + col * (available_width + spacing)
+                        y = page_height - margin - (row + 1) * (available_height + spacing) + (available_height - new_height)
+                        with io.BytesIO() as img_buffer:
+                            image.save(img_buffer, format = "PNG")
+                            img_buffer.seek(0)
+                            image_reader = ImageReader(img_buffer)
+                            c.drawImage(image_reader, x, y, new_width, new_height)
+                        text_x = x + new_width / 2
+                        text_y = y - 15
+                        c.setFont("Courier-Bold", 14)
+                        c.drawCentredString(text_x, text_y, filename)
+                        images_in_current_page += 1
+                        if images_in_current_page == images_per_page:
+                            c.showPage()
+                            images_in_current_page = 0
+                    if images_in_current_page > 0:
+                        c.showPage()
+                    c.save()
+                def create_zip(pdf_file, file_one, file_two):
                     buffer = io.BytesIO()
                     with zipfile.ZipFile(buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                        zip_file.writestr("result.pdf", pdf_file)
                         zip_file.writestr("empty_file.xlsx", file_one)
                         zip_file.writestr("result_file.xlsx", file_two)
-                        for image_name, image_data in image_data_list:
-                            zip_file.writestr(image_name, image_data)
                     return buffer.getvalue()
+                pdf_output_path = "result.pdf"
+                create_pdf_with_images(image_data_list, pdf_output_path)
+                with open(pdf_output_path, "rb") as f:
+                    pdf_file = f.read()
                 empty_excel = to_excel(empty_df)
                 result_excel = to_excel(result_df)
-                zip_data = create_zip(empty_excel, result_excel, image_data_list)
+                zip_data = create_zip(pdf_file, empty_excel, result_excel)
+                os.remove(pdf_output_path)
                 st.download_button(
                     label = "Download",
                     data = zip_data,
